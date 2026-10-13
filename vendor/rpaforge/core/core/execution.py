@@ -1,0 +1,371 @@
+"""
+RPAForge Core Execution Model.
+
+Data structures for process execution without Robot Framework.
+"""
+
+from __future__ import annotations
+
+import functools
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+
+class ExecutionStatus(Enum):
+    """Execution status for processes and tasks."""
+
+    PASS = "PASS"
+    FAIL = "FAIL"
+    CANCELLED = "CANCELLED"
+    SKIP = "SKIP"
+    RUNNING = "RUNNING"
+
+
+@dataclass
+class ActivityCall:
+    """A single activity invocation within a task."""
+
+    library: str
+    activity: str
+    args: tuple[Any, ...] = ()
+    kwargs: dict[str, Any] = field(default_factory=dict)
+    line: int = 0
+    node_id: str = ""
+    timeout_ms: int = 0
+    retry_count: int = 0
+    retry_delay_ms: int = 1000
+    retry_backoff: float = 2.0
+    continue_on_error: bool = False
+    output_variable: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "library": self.library,
+            "activity": self.activity,
+            "args": self.args,
+            "kwargs": self.kwargs,
+            "line": self.line,
+            "node_id": self.node_id,
+            "timeout_ms": self.timeout_ms,
+            "retry_count": self.retry_count,
+            "retry_delay_ms": self.retry_delay_ms,
+            "retry_backoff": self.retry_backoff,
+            "continue_on_error": self.continue_on_error,
+            "output_variable": self.output_variable,
+        }
+
+
+@dataclass
+class ActivityResult:
+    """Result of a single activity execution."""
+
+    status: ExecutionStatus
+    output: Any = None
+    error: str | None = None
+    elapsed_ms: int = 0
+
+
+@dataclass
+class ParallelGroup:
+    """A set of activity branches to execute concurrently.
+
+    Each branch is an independent list of ActivityCall objects.  All branches
+    run in separate threads; the group completes when every branch finishes.
+    If any branch fails and ``fail_fast`` is True the remaining branches are
+    allowed to finish their current step before the error is raised.
+    """
+
+    branches: list[list[ActivityCall]] = field(default_factory=list)
+    node_id: str = ""
+    fail_fast: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "parallel",
+            "node_id": self.node_id,
+            "branches": [[a.to_dict() for a in branch] for branch in self.branches],
+            "fail_fast": self.fail_fast,
+        }
+
+
+@dataclass
+class TryCatchGroup:
+    """Encapsulates try/catch/finally execution semantics.
+
+    try_activities run first. catch_activities run only if any try activity
+    fails. finally_activities always run regardless of outcome.
+    """
+
+    try_activities: list[ActivityCall | ParallelGroup] = field(default_factory=list)
+    catch_activities: list[ActivityCall | ParallelGroup] = field(default_factory=list)
+    finally_activities: list[ActivityCall | ParallelGroup] = field(default_factory=list)
+    node_id: str = ""
+
+
+#: Emitted when an ``llm-decision`` block could not obtain a valid option id
+#: from the model and execution routed to the configured fallback branch.
+EVENT_LLM_DECISION_FALLBACK = "llm_decision_fallback"
+
+
+@dataclass
+class LLMDecisionGroup:
+    """Runtime form of an ``llm-decision`` diagram block (issue #735).
+
+    The executor asks the configured LLM provider which option fits
+    *question* best, validates the answer against the connected branch ids
+    and runs exactly one branch. Invalid, unparseable or unreachable-model
+    answers route to ``fallback_option`` and emit
+    :data:`EVENT_LLM_DECISION_FALLBACK`; execution only fails when no valid
+    fallback is configured.
+    """
+
+    question: str = ""
+    options: list[dict[str, str]] = field(default_factory=list)
+    model: str = ""
+    fallback_option: str = ""
+    branches: dict[str, list[ActivityCall | ParallelGroup | TryCatchGroup]] = field(
+        default_factory=dict
+    )
+    node_id: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "llm_decision",
+            "node_id": self.node_id,
+            "question": self.question,
+            "options": [dict(option) for option in self.options],
+            "model": self.model,
+            "fallback_option": self.fallback_option,
+            "branches": {
+                option_id: [
+                    item.to_dict() if hasattr(item, "to_dict") else repr(item)
+                    for item in items
+                ]
+                for option_id, items in self.branches.items()
+            },
+        }
+
+
+@dataclass
+class Variable:
+    """A process variable."""
+
+    name: str
+    value: Any = None
+
+
+@dataclass
+class Task:
+    """A task within a process (equivalent to RF TestCase)."""
+
+    name: str
+    activities: list[ActivityCall | ParallelGroup | TryCatchGroup] = field(
+        default_factory=list
+    )
+    setup: ActivityCall | None = None
+    teardown: ActivityCall | None = None
+    tags: list[str] = field(default_factory=list)
+
+
+class TaskBuilder:
+    """Builder for creating tasks programmatically."""
+
+    def __init__(self, task: Task):
+        self._task = task
+
+    def add_activity(
+        self,
+        library: str,
+        activity: str,
+        *args: Any,
+        line: int = 0,
+        node_id: str = "",
+        timeout_ms: int = 0,
+        retry_count: int = 0,
+        retry_delay_ms: int = 1000,
+        retry_backoff: float = 2.0,
+        continue_on_error: bool = False,
+        output_variable: str = "",
+        **kwargs: Any,
+    ) -> TaskBuilder:
+        self._task.activities.append(
+            ActivityCall(
+                library=library,
+                activity=activity,
+                args=args,
+                kwargs=kwargs,
+                line=line,
+                node_id=node_id,
+                timeout_ms=timeout_ms,
+                retry_count=retry_count,
+                retry_delay_ms=retry_delay_ms,
+                retry_backoff=retry_backoff,
+                continue_on_error=continue_on_error,
+                output_variable=output_variable,
+            )
+        )
+        return self
+
+    def add_parallel_group(
+        self,
+        branches: list[list[ActivityCall]],
+        node_id: str = "",
+        fail_fast: bool = True,
+    ) -> TaskBuilder:
+        """Add a parallel group: all branches run concurrently."""
+        self._task.activities.append(
+            ParallelGroup(branches=branches, node_id=node_id, fail_fast=fail_fast)
+        )
+        return self
+
+    def set_setup(
+        self,
+        library: str,
+        activity: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TaskBuilder:
+        self._task.setup = ActivityCall(
+            library=library,
+            activity=activity,
+            args=args,
+            kwargs=kwargs,
+        )
+        return self
+
+    def set_teardown(
+        self,
+        library: str,
+        activity: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> TaskBuilder:
+        self._task.teardown = ActivityCall(
+            library=library,
+            activity=activity,
+            args=args,
+            kwargs=kwargs,
+        )
+        return self
+
+    def add_tags(self, *tags: str) -> TaskBuilder:
+        self._task.tags.extend(tags)
+        return self
+
+    def build(self) -> Task:
+        return self._task
+
+
+@dataclass
+class Process:
+    """A process (equivalent to RF TestSuite)."""
+
+    name: str
+    tasks: list[Task] = field(default_factory=list)
+    variables: dict[str, Any] = field(default_factory=dict)
+    imports: list[str] = field(default_factory=list)
+
+    def get_variable(self, name: str, default: Any = None) -> Any:
+        return self.variables.get(name, default)
+
+    def set_variable(self, name: str, value: Any) -> None:
+        self.variables[name] = value
+
+
+@dataclass
+class ExecutionResult:
+    """Result of process execution."""
+
+    status: ExecutionStatus
+    message: str = ""
+    variables: dict[str, Any] = field(default_factory=dict)
+    elapsed_ms: int = 0
+    task_results: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def passed(self) -> bool:
+        return self.status == ExecutionStatus.PASS
+
+    @property
+    def failed(self) -> bool:
+        return self.status == ExecutionStatus.FAIL
+
+
+class ProcessBuilder:
+    """Builder for creating processes programmatically."""
+
+    def __init__(self, name: str):
+        self._process = Process(name=name)
+
+    @property
+    def name(self) -> str:
+        return self._process.name
+
+    def add_variable(self, name: str, value: Any) -> ProcessBuilder:
+        self._process.variables[name] = value
+        return self
+
+    def add_import(self, module: str) -> ProcessBuilder:
+        self._process.imports.append(module)
+        return self
+
+    def add_task(self, name: str) -> TaskBuilder:
+        task = Task(name=name)
+        self._process.tasks.append(task)
+        return TaskBuilder(task)
+
+    def build(self) -> Process:
+        return self._process
+
+
+@dataclass
+class ExecutionContext:
+    """Runtime execution context."""
+
+    variables: dict[str, Any]
+    process: Process | None = None
+    task: Task | None = None
+    current_activity: ActivityCall | None = None
+    call_stack: list[ActivityCall] = field(default_factory=list)
+
+    def get_variable(self, name: str, default: Any = None) -> Any:
+        return self.variables.get(name, default)
+
+    def set_variable(self, name: str, value: Any) -> None:
+        self.variables[name] = value
+
+    def resolve_value(self, value: Any) -> Any:
+        if not isinstance(value, str):
+            if isinstance(value, (list, tuple)):
+                return [self.resolve_value(v) for v in value]
+            if isinstance(value, dict):
+                return {k: self.resolve_value(v) for k, v in value.items()}
+            return value
+
+        if value and _is_variable_reference(value):
+            return self.variables.get(value, value)
+        return value
+
+
+@functools.lru_cache(maxsize=256)
+def _is_variable_reference(value: str) -> bool:
+    if not value:
+        return False
+
+    if value.startswith(("'", '"', "/", "\\")) or ":" in value[:3]:
+        return False
+
+    if value.isdigit() or value in ("True", "False", "None"):
+        return False
+
+    if value.isidentifier():
+        return True
+
+    if "." in value:
+        return all(part.isidentifier() for part in value.split("."))
+
+    if "[" in value and "]" in value:
+        return value.split("[")[0].isidentifier()
+
+    return False
