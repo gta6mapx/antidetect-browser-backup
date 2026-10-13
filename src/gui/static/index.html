@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AntiDetect — Profile Manager</title>
+  <script>
+    /* Apply saved theme before first paint (dark is the default). */
+    try {
+      var t = localStorage.getItem("ad_theme");
+      if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="ps-shell">
+    <!-- ================= Sidebar ================= -->
+    <aside class="ps-side">
+      <div class="ps-brand">
+        <div class="ps-logo"><span class="ps-logo-glow"></span><span class="ps-logo-mark">&#9670;</span></div>
+        <div>
+          <div class="ps-brand-name">AntiDetect</div>
+          <div class="ps-brand-sub">Profile Manager</div>
+        </div>
+      </div>
+      <div id="update-banner" class="ps-update-banner" hidden>
+        <span>&#8595; Naya version available</span>
+        <button class="ps-btn ghost sm" id="btn-update-now">Update karo</button>
+      </div>
+
+      <nav class="ps-nav">
+        <button class="ps-navitem active" id="nav-profiles"><span class="ps-nav-ic">&#9783;</span><span>Profiles</span></button>
+        <button class="ps-navitem" id="nav-trash"><span class="ps-nav-ic">&#128465;</span><span>Trash</span></button>
+        <button class="ps-navitem" id="nav-analytics"><span class="ps-nav-ic">&#128202;</span><span>Analytics</span></button>
+        <button class="ps-navitem" id="nav-proxies"><span class="ps-nav-ic">&#128737;</span><span>Proxies</span></button>
+        <div class="ps-nav-h">Automation</div>
+        <button class="ps-navitem" id="nav-sync"><span class="ps-nav-ic">&#8646;</span><span>Synchronizer</span></button>
+        <button class="ps-navitem" id="nav-rpa"><span class="ps-nav-ic">&#129302;</span><span>RPA</span></button>
+        <div class="ps-nav-h">Team</div>
+        <button class="ps-navitem" id="nav-activity"><span class="ps-nav-ic">&#128221;</span><span>Activity</span></button>
+        <div class="ps-nav-h">Tools</div>
+        <button class="ps-navitem" id="nav-scraper"><span class="ps-nav-ic">&#127758;</span><span>Proxy Scraper</span></button>
+        <button class="ps-navitem" id="nav-bulk"><span class="ps-nav-ic">&#8681;</span><span>Bulk Import</span></button>
+        <button class="ps-navitem" id="nav-import"><span class="ps-nav-ic">&#8678;</span><span>Import</span></button>
+        <button class="ps-navitem" id="nav-api"><span class="ps-nav-ic">&#128273;</span><span>API</span></button>
+      </nav>
+
+      <div class="ps-folders">
+        <div class="ps-folders-h">Tags</div>
+        <div id="tag-list"></div>
+      </div>
+
+      <div id="conn-foot" class="ps-side-foot" title="Connection to the local backend">
+        <span class="ps-foot-dot"></span>
+        <span id="conn-label">Connecting&hellip;</span>
+        <span class="ps-foot-ver">v0.1.0</span>
+      </div>
+    </aside>
+
+    <!-- ================= Main ================= -->
+    <main class="ps-main">
+      <div id="view-profiles">
+      <div class="ps-stats">
+        <div class="ps-stat">
+          <div class="ps-stat-ic">&#9783;</div>
+          <div><div class="ps-stat-val" id="stat-profiles">0</div><div class="ps-stat-label">Profiles</div></div>
+        </div>
+        <div class="ps-stat">
+          <div class="ps-stat-ic pulse" id="stat-running-ic">&#9679;</div>
+          <div><div class="ps-stat-val" id="stat-running">0</div><div class="ps-stat-label">Running</div></div>
+        </div>
+        <div class="ps-stat">
+          <div class="ps-stat-ic">&#8646;</div>
+          <div><div class="ps-stat-val" id="stat-proxies">0</div><div class="ps-stat-label">Proxies</div></div>
+        </div>
+        <div style="flex:1"></div>
+        <button class="ps-btn ghost" id="btn-downloads" title="Browser downloads">
+          <span id="dl-ic">⬇</span> <span id="dl-label">Browsers</span>
+        </button>
+        <span class="ps-user-chip" id="user-chip" hidden>
+          <span id="user-name"></span><span class="ps-role" id="user-role"></span>
+          <button class="ps-btn ghost sm" id="btn-logout" title="Sign out">Logout</button>
+        </span>
+        <button class="ps-btn ghost" id="btn-theme" title="Toggle light/dark theme"><span id="theme-ic">&#9790;</span></button>
+        <button class="ps-btn primary" id="btn-new"><span class="ps-btn-ic">+</span> New Profile</button>
+      </div>
+
+      <div class="ps-toolbar">
+        <div class="ps-search">
+          <span class="ps-search-ic">&#8981;</span>
+          <input id="search" type="text" placeholder="Search profiles, tags&hellip;" autocomplete="off" aria-label="Search profiles">
+        </div>
+        <select id="group-filter" class="ps-select" aria-label="Filter by group" title="Filter by group">
+          <option value="">All groups</option>
+        </select>
+        <button class="ps-btn ghost sm" id="btn-groups" title="Manage groups">&#128193; Groups</button>
+        <div class="ps-crumb" id="crumb"><span>&#128193;</span> <span id="crumb-tag">All profiles</span></div>
+        <div style="flex:1"></div>
+        <div id="bulk-bar" class="ps-bulk-bar" hidden>
+          <span id="bulk-count" class="dim">0 selected</span>
+          <button class="ps-btn primary sm" id="bulk-launch">&#9654; Launch</button>
+          <button class="ps-btn ghost sm" id="bulk-stop">&#9632; Stop</button>
+          <button class="ps-btn ghost sm" id="bulk-edit">&#9998; Edit</button>
+          <button class="ps-btn ghost sm" id="bulk-export">&#8681; Export</button>
+          <button class="ps-btn danger sm" id="bulk-delete">&#10005; Delete</button>
+          <button class="ps-btn ghost sm" id="bulk-clear">Clear</button>
+        </div>
+        <span id="refresh-note" class="ps-refresh-note"></span>
+      </div>
+
+      <div class="ps-scroll">
+        <div id="table-wrap">
+          <table class="ps-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all" title="Select all"></th>
+                <th>No.</th><th>ID</th><th>Group</th><th>Name</th><th>IP</th>
+                <th>Last opened</th><th>Platform</th><th>Tags</th><th>Remark</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="profiles-body">
+              <tr><td colspan="11"><div class="ps-empty">Loading profiles&hellip;</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      </div><!-- /view-profiles -->
+
+      <!-- ================= Analytics (VIP dashboard) ================= -->
+      <div id="view-analytics" hidden>
+        <div class="ps-page-h">
+          <h2>&#128202; Analytics</h2>
+          <button class="ps-btn ghost sm" id="analytics-refresh">&#10227; Refresh</button>
+        </div>
+        <div id="analytics-body"><div class="ps-empty"><div>Loading analytics…</div></div></div>
+      </div>
+
+      <!-- ================= Proxy Scraper ================= -->
+      <div id="view-scraper" hidden>
+        <div class="ps-page-h">
+          <h2>&#127758; Proxy Scraper</h2>
+          <div class="ps-scraper-controls">
+            <label>Limit <input class="ps-in sm" id="scraper-limit" type="number" value="20" min="1" max="500"></label>
+            <button class="ps-btn primary sm" id="scraper-fetch">Fetch proxies</button>
+            <button class="ps-btn ghost sm" id="scraper-check-all" disabled>Check all</button>
+            <button class="ps-btn ghost sm" id="scraper-save" disabled>Save working</button>
+          </div>
+        </div>
+        <div class="ps-warn-banner">&#9888; Warm-up / testing tier only — <b>never</b> for real Gmail sessions.</div>
+        <div class="ps-scraper-filters" id="scraper-filters">
+          <div class="ps-sf-group"><span class="ps-sf-label">Type</span>
+            <label><input type="checkbox" id="sf-http" checked> HTTP</label>
+            <label><input type="checkbox" id="sf-socks5" checked> SOCKS5</label>
+            <label><input type="checkbox" id="sf-socks4" checked> SOCKS4</label>
+          </div>
+          <div class="ps-sf-group"><span class="ps-sf-label">Country</span>
+            <input class="ps-in sm wide" id="sf-countries" placeholder="US, DE (blank = all)">
+          </div>
+          <div class="ps-sf-group"><span class="ps-sf-label">Anonymity</span>
+            <select class="ps-in sm" id="sf-anonymity">
+              <option value="">Any</option><option value="elite">Elite</option>
+              <option value="anonymous">Anonymous</option><option value="transparent">Transparent</option>
+            </select>
+          </div>
+          <div class="ps-sf-group"><span class="ps-sf-label">Max ms</span>
+            <input class="ps-in sm" id="sf-latency" type="number" placeholder="—" min="0">
+          </div>
+          <label class="ps-sf-check"><input type="checkbox" id="sf-google"> <b>G</b> Google-verified</label>
+          <label class="ps-sf-check"><input type="checkbox" id="sf-nodc"> No datacenter</label>
+        </div>
+        <div class="ps-scraper-stats" id="scraper-stats"><span class="ps-dim">Loading feed stats…</span></div>
+        <div class="ps-bulk-card">
+          <div class="ps-bulk-h">
+            <b>&#9889; Bulk Test</b>
+            <span class="ps-dim">— apni proxy list paste karo (host:port, aik line mein aik)</span>
+          </div>
+          <textarea class="ps-in ps-bulk-ta" id="bulk-ta" placeholder="127.0.0.1:8080&#10;socks5://203.0.113.5:1080&#10;198.51.100.9:3128:user:pass"></textarea>
+          <div class="ps-bulk-row">
+            <button class="ps-btn primary sm" id="bulk-test-btn">Test all</button>
+            <button class="ps-btn ghost sm" id="bulk-copy-working" disabled>Copy working</button>
+            <button class="ps-btn ghost sm" id="bulk-copy-all" disabled>Copy all</button>
+            <span class="ps-dim" id="bulk-status"></span>
+          </div>
+          <div id="bulk-results"></div>
+        </div>
+        <div class="ps-bulk-row" style="margin-bottom:10px">
+          <button class="ps-btn ghost sm" id="scraper-copy-fetched" disabled>Copy fetched list</button>
+          <button class="ps-btn ghost sm" id="scraper-copy-working2" disabled>Copy working (checked)</button>
+        </div>
+        <div id="scraper-body"><div class="ps-empty"><div>Click "Fetch proxies" to scrape verified free proxies.</div></div></div>
+      </div>
+
+      <!-- ================= New Profile full page (AdsPower-style) ================= -->
+      <div id="view-new-profile" hidden>
+        <div class="ps-page-h">
+          <h2>New Browser Profile</h2>
+          <span class="ps-help" title="Create a new browser profile">?</span>
+        </div>
+        <div class="ps-tabs ps-anchor-tabs" id="new-tabs">
+          <button class="ps-tab active" data-tab="general">General</button>
+          <button class="ps-tab" data-tab="proxy">Proxy</button>
+          <button class="ps-tab" data-tab="platform">Platform</button>
+          <button class="ps-tab" data-tab="fingerprint">Fingerprint</button>
+          <button class="ps-tab" data-tab="advanced">Advanced</button>
+        </div>
+        <div class="ps-new-wrap">
+          <form id="form-new-page" class="ps-new-form">
+            <!-- General section -->
+            <div class="ps-tabpane active" data-pane="general">
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-name">Name</label>
+                <div class="ps-in-wrap">
+                  <input class="ps-in" id="np-name" type="text" placeholder="Optional: profile name" maxlength="100">
+                  <span class="ps-counter" id="np-name-count">0 / 100</span>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel">Browser</label>
+                <div class="ps-pills" id="np-browser">
+                  <button type="button" class="ps-pill active" data-val="camoufox">🦊 Firefox (Camoufox)</button>
+                  <button type="button" class="ps-pill" data-val="patchright">🌐 Chromium</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel">OS</label>
+                <div class="ps-pills" id="np-os">
+                  <button type="button" class="ps-pill" data-val="windows">🪟 Windows</button>
+                  <button type="button" class="ps-pill" data-val="macos">🍎 macOS</button>
+                  <button type="button" class="ps-pill active" data-val="linux">🐧 Linux</button>
+                  <button type="button" class="ps-pill" data-val="android">🤖 Android</button>
+                  <button type="button" class="ps-pill" data-val="ios">📱 iOS</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-ua">User-Agent</label>
+                <div class="ps-in-wrap">
+                  <input class="ps-in" id="np-ua" type="text" placeholder="Auto-generated">
+                  <button type="button" class="ps-icon-btn" id="np-ua-shuffle" title="Regenerate">🔀</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-group">Group <span class="ps-req">*</span></label>
+                <div class="ps-in-wrap">
+                  <select class="ps-in" id="np-group"></select>
+                  <button type="button" class="ps-btn ghost sm" id="np-tags-btn">🏷️ Tags</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-cookie">Cookie</label>
+                <input class="ps-in" id="np-cookie" type="text" placeholder="Formats: JSON, Netscape, Name=Value">
+                <div style="text-align:right"><button type="button" class="ps-link" id="np-merge-cookie">+ Merge cookie</button></div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-remark">Remark</label>
+                <div class="ps-in-wrap">
+                  <input class="ps-in" id="np-remark" type="text" placeholder="Enter remark" maxlength="2000">
+                  <span class="ps-counter" id="np-remark-count">0 / 2000</span>
+                </div>
+              </div>
+            </div>
+            <!-- Proxy section -->
+            <div class="ps-tabpane" data-pane="proxy">
+              <div class="ps-field">
+                <label class="ps-flabel">Proxy setting</label>
+                <div class="ps-seg" id="np-proxy-mode">
+                  <button type="button" class="ps-seg-btn active" data-val="custom">Custom</button>
+                  <button type="button" class="ps-seg-btn" data-val="saved">Saved Proxies</button>
+                  <button type="button" class="ps-seg-btn" data-val="rotating">Rotating Proxy</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-proxy">Proxy</label>
+                <select class="ps-in" id="np-proxy"></select>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-proxy-type">Proxy type</label>
+                <select class="ps-in" id="np-proxy-type">
+                  <option value="">No Proxy (direct)</option>
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
+                  <option value="socks5">SOCKS5</option>
+                  <option value="socks4">SOCKS4</option>
+                </select>
+              </div>
+            </div>
+            <!-- Platform section -->
+            <div class="ps-tabpane" data-pane="platform">
+              <div class="ps-field">
+                <label class="ps-flabel">Platform</label>
+                <div class="ps-add-box" id="np-platform-box">
+                  <button type="button" class="ps-add-btn">+ Add Platform Account</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-tabs">Tabs</label>
+                <textarea class="ps-in" id="np-tabs" rows="3" placeholder="Enter URLs (one URL per line)&#10;www.google.com&#10;www.facebook.com"></textarea>
+              </div>
+            </div>
+            <!-- Fingerprint section -->
+            <div class="ps-tabpane" data-pane="fingerprint">
+              <div class="ps-field">
+                <label class="ps-flabel">WebRTC</label>
+                <div class="ps-pills" id="np-webrtc">
+                  <button type="button" class="ps-pill" data-val="forward">Forward</button>
+                  <button type="button" class="ps-pill" data-val="replace">Replace</button>
+                  <button type="button" class="ps-pill" data-val="real">Real</button>
+                  <button type="button" class="ps-pill" data-val="disabled">Disabled</button>
+                  <button type="button" class="ps-pill active" data-val="proxy">Proxy UDP</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel">Timezone</label>
+                <div class="ps-pills" id="np-timezone">
+                  <button type="button" class="ps-pill active" data-val="ip">Based on IP</button>
+                  <button type="button" class="ps-pill" data-val="real">Real</button>
+                  <button type="button" class="ps-pill" data-val="custom">Custom</button>
+                </div>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel">Hardware noise</label>
+                <div class="ps-toggles">
+                  <label class="ps-toggle-row"><span>Canvas</span><button type="button" class="ps-toggle" data-val="canvas" role="switch" aria-checked="false"><span class="ps-knob"></span></button></label>
+                  <label class="ps-toggle-row"><span>WebGL Image</span><button type="button" class="ps-toggle" data-val="webgl" role="switch" aria-checked="false"><span class="ps-knob"></span></button></label>
+                  <label class="ps-toggle-row"><span>AudioContext</span><button type="button" class="ps-toggle" data-val="audio" role="switch" aria-checked="false"><span class="ps-knob"></span></button></label>
+                  <label class="ps-toggle-row"><span>ClientRects</span><button type="button" class="ps-toggle on" data-val="clientrects" role="switch" aria-checked="true"><span class="ps-knob"></span></button></label>
+                  <label class="ps-toggle-row"><span>SpeechVoices</span><button type="button" class="ps-toggle on" data-val="speech" role="switch" aria-checked="true"><span class="ps-knob"></span></button></label>
+                </div>
+              </div>
+            </div>
+            <!-- Advanced section -->
+            <div class="ps-tabpane" data-pane="advanced">
+              <div class="ps-field">
+                <label class="ps-flabel" for="np-ext">Extension</label>
+                <select class="ps-in" id="np-ext">
+                  <option value="">Use team's extensions</option>
+                </select>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel">Random fingerprint</label>
+                <label class="ps-toggle-row"><span>New fingerprint on each startup</span><button type="button" class="ps-toggle" id="np-rand-fp" role="switch" aria-checked="false"><span class="ps-knob"></span></button></label>
+              </div>
+            </div>
+            <div class="ps-sticky-bar">
+              <button type="submit" class="ps-btn primary">OK</button>
+              <button type="button" class="ps-btn ghost" id="np-cancel">Cancel</button>
+            </div>
+          </form>
+          <aside class="ps-new-side">
+            <div class="ps-side-h">Overview <button type="button" class="ps-link" id="np-new-fp">🔀 New fingerprint</button></div>
+            <div id="np-overview"></div>
+            <div class="ps-side-foot">Set default values in <a href="#" class="ps-link">Preferences</a>.</div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= New Profile modal ================= -->
+  <div id="modal-new" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Create</div><div class="ps-drawer-title">New Profile</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-new" class="ps-form">
+        <div class="ps-field">
+          <label class="ps-flabel" for="new-name">Profile name</label>
+          <input class="ps-in" id="new-name" type="text" required placeholder="e.g. client-acme-01">
+        </div>
+        <div class="ps-row">
+          <div class="ps-field">
+            <label class="ps-flabel" for="new-os">Operating system</label>
+            <select class="ps-in" id="new-os" required>
+              <option value="windows">Windows</option>
+              <option value="macos">macOS</option>
+              <option value="linux">Linux</option>
+            </select>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="new-proxy">Proxy</label>
+            <select class="ps-in" id="new-proxy"><option value="">None (direct)</option></select>
+          </div>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="new-engine">Browser engine</label>
+          <select class="ps-in" id="new-engine">
+            <option value="camoufox">Firefox (Camoufox) — fingerprint spoofing</option>
+            <option value="patchright">Chromium (Patchright) — driver stealth</option>
+          </select>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="new-tag">Client tag <span class="ps-flabel-hint">(optional)</span></label>
+          <input class="ps-in" id="new-tag" type="text" placeholder="e.g. acme">
+        </div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Cancel</button>
+          <button type="submit" class="ps-btn primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= Profile row dropdown menu ================= -->
+  <div id="row-menu" class="ps-dropdown" hidden>
+    <button type="button" data-menu="edit">✏️ Edit</button>
+    <button type="button" data-menu="copy">📋 Copy</button>
+    <button type="button" data-menu="edit-proxy">🔌 Edit proxy</button>
+    <button type="button" data-menu="edit-account">👤 Edit account</button>
+    <button type="button" data-menu="edit-fingerprint">🔀 Edit fingerprint</button>
+    <button type="button" data-menu="cookies">🍪 Cookie robot</button>
+    <button type="button" data-menu="cache">💾 Cache data</button>
+    <div class="ps-dropdown-sep"></div>
+    <button type="button" data-menu="delete" class="danger">🗑️ Delete</button>
+  </div>
+
+  <!-- ================= Browser downloads modal ================= -->
+  <div id="modal-downloads" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop" style="max-width:520px">
+      <div class="ps-drawer-h">
+        <h3>Browser Downloads</h3>
+        <button type="button" class="ps-btn ghost sm" data-close>✕</button>
+      </div>
+      <div class="ps-form" style="padding:16px">
+        <p class="ps-hint">Required browsers are downloaded automatically on first launch. You can also download them manually here.</p>
+        <div id="dl-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Edit Profile modal ================= -->
+  <div id="modal-edit" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop ps-modal-edit">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Edit</div><div class="ps-drawer-title" id="edit-title">Profile</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-tabs" id="edit-tabs">
+        <button class="ps-tab active" data-tab="general">General</button>
+        <button class="ps-tab" data-tab="proxy">Proxy</button>
+        <button class="ps-tab" data-tab="fingerprint">Fingerprint</button>
+        <button class="ps-tab" data-tab="extensions">Extensions</button>
+        <button class="ps-tab" data-tab="platform">Platform</button>
+        <button class="ps-tab" data-tab="advanced">Advanced</button>
+      </div>
+      <div class="ps-edit-wrap">
+      <form id="form-edit" class="ps-form ps-edit-main">
+        <input type="hidden" id="edit-name">
+        <div class="ps-tabpane active" data-pane="general">
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-display-name">Name</label>
+            <div class="ps-in-wrap">
+              <input class="ps-in" id="edit-display-name" type="text" maxlength="100" placeholder="Profile name">
+              <span class="ps-counter" id="edit-name-counter">0 / 100</span>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-browser">Browser</label>
+            <select class="ps-in" id="edit-browser">
+              <option value="camoufox">🦊 Firefox (Camoufox)</option>
+              <option value="patchright">🌐 Chromium (Patchright)</option>
+            </select>
+            <p class="ps-hint" id="edit-kernel-note"></p>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">OS</label>
+            <div class="ps-os-pills" id="edit-os-pills">
+              <button type="button" class="ps-os-pill" data-val="windows" title="Windows">🪟</button>
+              <button type="button" class="ps-os-pill" data-val="macos" title="macOS">🍎</button>
+              <button type="button" class="ps-os-pill" data-val="linux" title="Linux">🐧</button>
+              <button type="button" class="ps-os-pill" data-val="android" title="Android">🤖</button>
+              <button type="button" class="ps-os-pill" data-val="ios" title="iOS">📱</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-ua">User-Agent</label>
+            <div class="ps-row">
+              <div class="ps-field" style="max-width:120px">
+                <select class="ps-in" id="edit-ua-filter">
+                  <option value="all">All</option>
+                  <option value="chrome">Chrome</option>
+                  <option value="firefox">Firefox</option>
+                </select>
+              </div>
+              <div class="ps-field">
+                <div class="ps-in-wrap">
+                  <input class="ps-in ps-mono" id="edit-ua" type="text">
+                  <button type="button" class="ps-icon-btn" id="edit-ua-copy" title="Copy">📋</button>
+                  <button type="button" class="ps-icon-btn" id="edit-ua-shuffle" title="Random User-Agent">🔀</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-cookie">Cookie</label>
+            <textarea class="ps-in ps-mono" id="edit-cookie" rows="4" placeholder='[{"name":"...","value":"...","domain":"..."}]'></textarea>
+            <div style="text-align:right;margin-top:4px">
+              <button type="button" class="ps-link" id="edit-cookie-merge">⊕ Merge cookie</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-remark">Remark</label>
+            <div class="ps-in-wrap">
+              <textarea class="ps-in" id="edit-remark" rows="2" maxlength="2000" placeholder="Enter remark"></textarea>
+              <span class="ps-counter" id="edit-remark-counter">0 / 2000</span>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-group">Group</label>
+            <select class="ps-in" id="edit-group"><option value="">Ungrouped</option></select>
+          </div>
+        </div>
+        <div class="ps-tabpane" data-pane="proxy">
+          <div class="ps-field">
+            <label class="ps-flabel">Proxy setting</label>
+            <div class="ps-seg" id="edit-proxy-mode">
+              <button type="button" class="ps-seg-btn active" data-val="custom">Custom</button>
+              <button type="button" class="ps-seg-btn" data-val="saved">Saved Proxies</button>
+              <button type="button" class="ps-seg-btn" data-val="rotating">Rotating Proxy</button>
+              <button type="button" class="ps-seg-btn" data-val="provider">Proxy Provider</button>
+            </div>
+          </div>
+          <div id="edit-proxy-saved" hidden>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-proxy">Proxy</label>
+              <select class="ps-in" id="edit-proxy"><option value="">None (direct)</option></select>
+            </div>
+          </div>
+          <div id="edit-proxy-rotating" hidden>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-pool">Rotation pool</label>
+              <select class="ps-in" id="edit-px-pool" disabled><option value="">Coming soon…</option></select>
+            </div>
+            <p class="ps-hint">⚠️ Rotating proxy pools coming soon. Use Custom proxy for now.</p>
+          </div>
+          <div id="edit-proxy-provider" hidden>
+            <p class="ps-hint">⚠️ Proxy provider integration coming soon. Use Custom proxy for now.</p>
+          </div>
+          <div id="edit-proxy-custom">
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-type">Proxy type</label>
+              <select class="ps-in" id="edit-px-type">
+                <option value="">No Proxy (direct)</option>
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="socks5">Socks5</option>
+                <option value="socks4">Socks4</option>
+              </select>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-ipchecker">IP checker</label>
+              <select class="ps-in" id="edit-px-ipchecker">
+                <option value="ip2location">IP2Location</option>
+                <option value="ipapi">ip-api.com</option>
+                <option value="ipinfo">ipinfo.io</option>
+              </select>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel">Host:Port</label>
+              <div class="ps-hostport">
+                <input class="ps-in" id="edit-px-host" type="text" placeholder="45.90.49.12">
+                <span class="ps-hostport-sep">:</span>
+                <input class="ps-in" id="edit-px-port" type="number" placeholder="12324">
+                <button type="button" class="ps-btn ghost sm" id="edit-px-test">Check Proxy</button>
+                <button type="button" class="ps-icon-btn" id="edit-px-paste" title="Paste from clipboard">📋</button>
+              </div>
+              <span id="edit-px-result" class="ps-hint"></span>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-user">Proxy username</label>
+              <input class="ps-in" id="edit-px-user" type="text" placeholder="username">
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-pass">Proxy Password</label>
+              <input class="ps-in" id="edit-px-pass" type="password" placeholder="••••••">
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-changeurl">Change IP URL</label>
+              <div class="ps-in-wrap">
+                <input class="ps-in" id="edit-px-changeurl" type="text" placeholder="Enter Change IP URL">
+                <button type="button" class="ps-icon-btn" id="edit-px-refresh-url" title="Refresh">🔄</button>
+              </div>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-px-name">Save as <span class="ps-flabel-hint">(optional)</span></label>
+              <input class="ps-in" id="edit-px-name" type="text" placeholder="e.g. my-proxy-1">
+            </div>
+          </div>
+          <p class="ps-hint">Attach a proxy to route this profile's traffic.</p>
+        </div>
+        <div class="ps-tabpane" data-pane="fingerprint">
+          <div class="ps-field">
+            <label class="ps-flabel">WebRTC</label>
+            <div class="ps-pills" id="edit-webrtc">
+              <button type="button" class="ps-pill" data-val="forward">Forward</button>
+              <button type="button" class="ps-pill" data-val="replace">Replace</button>
+              <button type="button" class="ps-pill" data-val="real">Real</button>
+              <button type="button" class="ps-pill" data-val="disabled">Disabled</button>
+              <button type="button" class="ps-pill active" data-val="proxy">Proxy UDP</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Timezone</label>
+            <div class="ps-pills" id="edit-tz-mode">
+              <button type="button" class="ps-pill active" data-val="ip">Based on IP</button>
+              <button type="button" class="ps-pill" data-val="real">Real</button>
+              <button type="button" class="ps-pill" data-val="custom">Custom</button>
+            </div>
+            <input class="ps-in" id="edit-tz" type="text" placeholder="e.g. America/New_York" style="margin-top:8px" hidden>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Location</label>
+            <div class="ps-pills" id="edit-loc-mode">
+              <button type="button" class="ps-pill active" data-val="ip">Based on IP</button>
+              <button type="button" class="ps-pill" data-val="custom">Custom</button>
+              <button type="button" class="ps-pill" data-val="block">Block</button>
+            </div>
+            <div class="ps-radio-row" style="margin-top:8px">
+              <label class="ps-radio"><input type="radio" name="edit-loc-perm" value="ask" checked> <span>Ask each time</span></label>
+              <label class="ps-radio"><input type="radio" name="edit-loc-perm" value="allow"> <span>Always allow</span></label>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Language</label>
+            <div class="ps-pills" id="edit-lang-mode">
+              <button type="button" class="ps-pill active" data-val="ip">Based on IP</button>
+              <button type="button" class="ps-pill" data-val="custom">Custom</button>
+            </div>
+            <input class="ps-in" id="edit-locale" type="text" placeholder="e.g. en-US" style="margin-top:8px" hidden>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Display language</label>
+            <div class="ps-pills" id="edit-displang-mode">
+              <button type="button" class="ps-pill active" data-val="based">Based on Language</button>
+              <button type="button" class="ps-pill" data-val="real">Real</button>
+              <button type="button" class="ps-pill" data-val="custom">Custom</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Screen Resolution</label>
+            <div class="ps-pills" id="edit-screen-mode">
+              <button type="button" class="ps-pill active" data-val="predefined">Predefined</button>
+              <button type="button" class="ps-pill" data-val="custom">Custom</button>
+            </div>
+            <select class="ps-in" id="edit-screen-preset" style="margin-top:8px">
+              <option value="ua">Based on User-Agent</option>
+              <option value="1920x1080">1920 × 1080</option>
+              <option value="1366x768">1366 × 768</option>
+              <option value="1536x864">1536 × 864</option>
+              <option value="1440x900">1440 × 900</option>
+              <option value="2560x1440">2560 × 1440</option>
+            </select>
+            <div class="ps-row" id="edit-screen-custom" style="margin-top:8px" hidden>
+              <div class="ps-field">
+                <input class="ps-in" id="edit-sw" type="number" min="800" max="7680" placeholder="Width">
+              </div>
+              <div class="ps-field">
+                <input class="ps-in" id="edit-sh" type="number" min="600" max="4320" placeholder="Height">
+              </div>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Fonts</label>
+            <div class="ps-pills" id="edit-fonts-mode">
+              <button type="button" class="ps-pill active" data-val="default">Default</button>
+              <button type="button" class="ps-pill" data-val="custom">Custom</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Hardware noise</label>
+            <div class="ps-noise-row">
+              <label class="ps-noise-item"><button type="button" class="ps-toggle" data-val="canvas" role="switch" aria-checked="false"><span class="ps-knob"></span></button><span>Canvas</span></label>
+              <label class="ps-noise-item"><button type="button" class="ps-toggle" data-val="webgl" role="switch" aria-checked="false"><span class="ps-knob"></span></button><span>WebGL Image</span></label>
+              <label class="ps-noise-item"><button type="button" class="ps-toggle on" data-val="audio" role="switch" aria-checked="true"><span class="ps-knob"></span></button><span>AudioContext</span></label>
+              <label class="ps-noise-item"><button type="button" class="ps-toggle on" data-val="mediadevice" role="switch" aria-checked="true"><span class="ps-knob"></span></button><span>Media device [Auto]</span> <button type="button" class="ps-link" id="edit-mediadevice-edit">Edit</button></label>
+              <label class="ps-noise-item"><button type="button" class="ps-toggle on" data-val="clientrects" role="switch" aria-checked="true"><span class="ps-knob"></span></button><span>ClientRects</span></label>
+              <label class="ps-noise-item"><button type="button" class="ps-toggle on" data-val="speech" role="switch" aria-checked="true"><span class="ps-knob"></span></button><span>SpeechVoices</span></label>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">WebGL metadata</label>
+            <div class="ps-pills" id="edit-webgl-mode">
+              <button type="button" class="ps-pill" data-val="real">Real</button>
+              <button type="button" class="ps-pill active" data-val="custom">Custom</button>
+            </div>
+            <div class="ps-field" style="margin-top:8px">
+              <label class="ps-flabel" for="edit-webgl-vendor">Vendor</label>
+              <select class="ps-in" id="edit-webgl-vendor">
+                <option value="Google Inc. (Intel)">Google Inc. (Intel)</option>
+                <option value="Google Inc. (NVIDIA)">Google Inc. (NVIDIA)</option>
+                <option value="Google Inc. (AMD)">Google Inc. (AMD)</option>
+                <option value="Google Inc.">Google Inc.</option>
+              </select>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="edit-webgl-renderer">Renderer</label>
+              <div class="ps-in-wrap">
+                <input class="ps-in ps-mono" id="edit-webgl-renderer" type="text" placeholder="ANGLE (Intel, ...)">
+                <button type="button" class="ps-icon-btn" id="edit-renderer-shuffle" title="Random renderer">🔀</button>
+              </div>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">WebGPU</label>
+            <div class="ps-pills" id="edit-webgpu-mode">
+              <button type="button" class="ps-pill active" data-val="based">Based on WebGL</button>
+              <button type="button" class="ps-pill" data-val="real">Real</button>
+              <button type="button" class="ps-pill" data-val="disabled">Disabled</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <button type="button" class="ps-link" id="edit-fp-more">Show more ∨</button>
+          </div>
+          <div id="edit-fp-advanced" hidden>
+            <div class="ps-row">
+              <div class="ps-field">
+                <label class="ps-flabel" for="edit-platform">Platform</label>
+                <input class="ps-in" id="edit-platform" type="text" placeholder="e.g. Win32">
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="edit-hw">Hardware concurrency</label>
+                <input class="ps-in" id="edit-hw" type="number" min="1" max="64">
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="edit-mem">Device memory (GB)</label>
+                <input class="ps-in" id="edit-mem" type="number" min="1" max="64">
+              </div>
+            </div>
+          </div>
+          <div class="ps-field">
+            <button type="button" class="ps-btn ghost" id="edit-regen">&#10227; Regenerate fingerprint</button>
+            <span class="ps-hint">Generates a fresh coherent fingerprint (keeps name, proxy, tag).</span>
+          </div>
+        </div>
+        <div class="ps-tabpane" data-pane="extensions">
+          <div id="edit-extensions-list" class="ps-groups-list"></div>
+          <div id="form-ext-upload" class="ps-form" style="margin-top:12px">
+            <div class="ps-field">
+              <label class="ps-flabel" for="ext-file">Upload extension <span class="ps-flabel-hint">(.crx or .zip)</span></label>
+              <input class="ps-in" id="ext-file" type="file" accept=".crx,.zip,application/zip">
+            </div>
+            <p class="ps-hint">Chromium profiles load enabled extensions on launch. Firefox: files are stored for manual install.</p>
+            <div class="ps-modal-foot">
+              <button type="button" class="ps-btn primary sm" id="ext-upload-btn">Upload</button>
+            </div>
+          </div>
+        </div>
+        <div class="ps-tabpane" data-pane="platform">
+          <div class="ps-field">
+            <label class="ps-flabel">Platform</label>
+            <button type="button" class="ps-add-platform" id="edit-add-platform">
+              <span class="ps-add-icon">⊕</span> Add Platform Account
+            </button>
+            <div id="edit-platform-list" class="ps-platform-list"></div>
+            <select class="ps-in" id="edit-platform-acct" hidden>
+              <option value="">None</option>
+              <option value="facebook">Facebook</option>
+              <option value="google">Google</option>
+              <option value="tiktok">TikTok</option>
+              <option value="instagram">Instagram</option>
+              <option value="twitter">Twitter/X</option>
+              <option value="amazon">Amazon</option>
+              <option value="youtube">YouTube</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-startup-urls">Tabs</label>
+            <textarea class="ps-in ps-mono" id="edit-startup-urls" rows="5" placeholder="https://example.com"></textarea>
+            <p class="ps-hint">One URL per line — opened as tabs on launch.</p>
+          </div>
+        </div>
+        <div class="ps-tabpane" data-pane="advanced">
+          <div class="ps-field">
+            <label class="ps-flabel" for="edit-ext-mode">Extension</label>
+            <select class="ps-in" id="edit-ext-mode">
+              <option value="team">Use team's extensions</option>
+              <option value="custom">Custom selection</option>
+              <option value="none">No extensions</option>
+            </select>
+            <p class="ps-hint">The enabled extensions from [Extensions] will be installed in the profile.</p>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Data Sync</label>
+            <div class="ps-pills" id="edit-sync-mode">
+              <button type="button" class="ps-pill active" data-val="global">Use global settings</button>
+              <button type="button" class="ps-pill" data-val="custom">Customize</button>
+            </div>
+            <p class="ps-hint">Sync bookmarks, history and passwords across devices.</p>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Browser Settings</label>
+            <div class="ps-pills" id="edit-bsettings-mode">
+              <button type="button" class="ps-pill active" data-val="global">Use global settings</button>
+              <button type="button" class="ps-pill" data-val="custom">Customize</button>
+            </div>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Random fingerprint</label>
+            <div class="ps-noise-row">
+              <label class="ps-noise-item"><button type="button" class="ps-toggle" data-val="random_fp" role="switch" aria-checked="false"><span class="ps-knob"></span></button><span>Enabled: New fingerprint will be randomly generated on each startup, ignoring some existing settings.</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Cancel</button>
+          <button type="submit" class="ps-btn primary">Save changes</button>
+        </div>
+      </form>
+      <aside class="ps-edit-side">
+        <h4>Overview <button type="button" class="ps-link" id="btn-regen-fp" title="Generate new fingerprint">🔀 New fingerprint</button></h4>
+        <div id="edit-overview"></div>
+      </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Bulk Import modal ================= -->
+  <div id="modal-bulk" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Create</div><div class="ps-drawer-title">Bulk Import</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-bulk" class="ps-form">
+        <div class="ps-field">
+          <label class="ps-flabel" for="bulk-file">CSV or JSON file</label>
+          <input class="ps-in" id="bulk-file" type="file" accept=".csv,.json,text/csv,application/json" required>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="bulk-tag">Client tag <span class="ps-flabel-hint">(optional, CSV only)</span></label>
+          <input class="ps-in" id="bulk-tag" type="text" placeholder="e.g. acme">
+        </div>
+        <p class="ps-hint">CSV: name,os,engine columns. JSON: export file from &#8681; Export.</p>
+        <div id="bulk-result" class="ps-bulk-result" hidden></div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Cancel</button>
+          <button type="submit" class="ps-btn primary">Import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= Sync modal ================= -->
+  <div id="modal-sync" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Mirror</div><div class="ps-drawer-title">Action Sync</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-sync" class="ps-form">
+        <div class="ps-field">
+          <label class="ps-flabel" for="sync-master">Master profile <span class="ps-flabel-hint">(drives the session)</span></label>
+          <select class="ps-in" id="sync-master" required></select>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel">Followers <span class="ps-flabel-hint">(mirror the master)</span></label>
+          <div id="sync-followers" class="ps-check-list"></div>
+        </div>
+        <div class="ps-row">
+          <div class="ps-field">
+            <label class="ps-flabel" for="sync-headless">Windows</label>
+            <select class="ps-in" id="sync-headless">
+              <option value="1">Headless (server)</option>
+              <option value="0">Visible</option>
+            </select>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="sync-typing">Typing</label>
+            <select class="ps-in" id="sync-typing">
+              <option value="1">Mirror keystrokes</option>
+              <option value="0">Clicks/scrolls only</option>
+            </select>
+          </div>
+        </div>
+        <div id="sync-status" class="ps-bulk-result" hidden></div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn danger" id="btn-sync-stop" hidden>Stop session</button>
+          <span style="flex:1"></span>
+          <button type="button" class="ps-btn ghost" data-close>Close</button>
+          <button type="submit" class="ps-btn primary" id="btn-sync-start">Start sync</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= Migrate-import modal ================= -->
+  <div id="modal-migrate" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Migrate</div><div class="ps-drawer-title">Import from another browser</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-migrate" class="ps-form">
+        <div class="ps-field">
+          <label class="ps-flabel" for="migrate-file">JSON export file</label>
+          <input class="ps-in" id="migrate-file" type="file" accept=".json,application/json" required>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="migrate-source">Source <span class="ps-flabel-hint">(both use the same tolerant field matching)</span></label>
+          <select class="ps-in" id="migrate-source">
+            <option value="adspower">AdsPower</option>
+            <option value="gologin">GoLogin / Multilogin</option>
+          </select>
+        </div>
+        <div id="migrate-result" class="ps-bulk-result" hidden></div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Cancel</button>
+          <button type="submit" class="ps-btn primary">Import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= Activity log modal ================= -->
+  <div id="modal-activity" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop ps-modal-lg">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Team</div><div class="ps-drawer-title">Activity log</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <div id="activity-list" class="ps-groups-list"></div>
+        <div class="ps-modal-foot">
+          <button class="ps-btn ghost sm" id="btn-activity-clear">Clear log</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= External API modal ================= -->
+  <div id="modal-api" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop" style="max-width:640px">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Automation</div><div class="ps-drawer-title">External API</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <h4 style="margin:0 0 8px">API keys <span class="ps-hint">(admin only)</span></h4>
+        <div id="api-key-once" class="ps-bulk-result" hidden></div>
+        <form id="form-api-key" class="ps-form" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="ps-field" style="flex:1;min-width:160px">
+            <label class="ps-flabel" for="api-key-name">Key name</label>
+            <input class="ps-in" id="api-key-name" type="text" placeholder="e.g. n8n-automation" required>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Scopes</label>
+            <label><input type="checkbox" class="api-scope" value="profiles:read" checked> read</label>
+            <label><input type="checkbox" class="api-scope" value="profiles:write"> write</label>
+            <label><input type="checkbox" class="api-scope" value="profiles:launch"> launch</label>
+          </div>
+          <button type="submit" class="ps-btn primary">Issue key</button>
+        </form>
+        <div id="api-key-list" style="margin:8px 0 16px"></div>
+        <h4 style="margin:0 0 8px">Webhooks <span class="ps-hint">(admin only)</span></h4>
+        <form id="form-webhook" class="ps-form" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="ps-field" style="flex:2;min-width:200px">
+            <label class="ps-flabel" for="webhook-url">URL</label>
+            <input class="ps-in" id="webhook-url" type="url" placeholder="https://example.com/hook" required>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Events</label>
+            <label><input type="checkbox" class="wh-event" value="profile.launched" checked> launched</label>
+            <label><input type="checkbox" class="wh-event" value="profile.stopped" checked> stopped</label>
+            <label><input type="checkbox" class="wh-event" value="profile.failed" checked> failed</label>
+          </div>
+          <button type="submit" class="ps-btn primary">Add</button>
+        </form>
+        <div id="webhook-list" style="margin:8px 0 16px"></div>
+        <h4 style="margin:0 0 8px">Playwright (Python) snippet</h4>
+        <pre class="ps-mono" id="api-snippet" style="white-space:pre-wrap;word-break:break-all"></pre>
+        <button type="button" class="ps-btn ghost" id="btn-copy-snippet">Copy snippet</button>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Synchronizer modal ================= -->
+  <div id="modal-sync" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Automation</div><div class="ps-drawer-title">Synchronizer</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <p class="ps-hint">Mirror the master profile's actions onto follower profiles.</p>
+        <div id="sync-active" hidden>
+          <div class="ps-sync-status">
+            <span class="ps-tag">ACTIVE</span>
+            <span id="sync-status-text" class="dim"></span>
+          </div>
+          <div class="ps-modal-foot">
+            <button class="ps-btn danger" id="btn-sync-stop">Stop session</button>
+          </div>
+        </div>
+        <form id="form-sync-start">
+          <div class="ps-field">
+            <label class="ps-flabel" for="sync-master">Master profile</label>
+            <select class="ps-in" id="sync-master"></select>
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel">Follower profiles</label>
+            <div id="sync-followers" class="ps-checklist"></div>
+          </div>
+          <div class="ps-field ps-checkrow">
+            <label><input type="checkbox" id="sync-typing" checked> Sync typing</label>
+          </div>
+          <div class="ps-modal-foot">
+            <button type="submit" class="ps-btn primary">Start sync</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= RPA modal ================= -->
+  <div id="modal-rpa" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop ps-modal-lg">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Automation</div><div class="ps-drawer-title">RPA <span class="ps-hint" style="font-weight:normal">powered by RPAForge (Apache-2.0)</span></div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <div class="ps-tabs" id="rpa-tabs">
+          <button class="ps-tab active" data-tab="recipes">Workflows</button>
+          <button class="ps-tab" data-tab="activities">Activities</button>
+          <button class="ps-tab" data-tab="run">Run</button>
+          <button class="ps-tab" data-tab="jobs">Jobs</button>
+        </div>
+        <div class="ps-tabpane active" data-pane="recipes">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button type="button" class="ps-btn primary sm" id="rpa-new-workflow">+ New Workflow</button>
+            <button type="button" class="ps-btn ghost sm" id="rpa-import-btn">⬆ Import JSON</button>
+            <input type="file" id="rpa-import-file" accept=".json" hidden>
+          </div>
+          <div id="rpa-recipes-list" class="ps-groups-list"></div>
+          <p class="ps-hint" style="margin-top:8px">Workflows automate multi-step browser tasks across your anti-detect profiles — form filling, data extraction, scheduled runs.</p>
+        </div>
+        <div class="ps-tabpane" data-pane="activities">
+          <div id="rpa-activities-list" class="ps-groups-list"></div>
+          <p class="ps-hint" style="margin-top:8px">Building blocks from RPAForge's WebUI library (Playwright-powered with smart selectors).</p>
+        </div>
+        <div class="ps-tabpane" data-pane="run">
+          <form id="form-rpa-run" class="ps-form">
+            <div class="ps-field">
+              <label class="ps-flabel" for="rpa-recipe">Recipe</label>
+              <select class="ps-in" id="rpa-recipe"></select>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="rpa-profile">Profile</label>
+              <select class="ps-in" id="rpa-profile"></select>
+            </div>
+            <div class="ps-modal-foot">
+              <button type="submit" class="ps-btn primary">Run recipe</button>
+            </div>
+          </form>
+        </div>
+        <div class="ps-tabpane" data-pane="jobs">
+          <div id="rpa-jobs-list" class="ps-groups-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Workflow Builder modal ================= -->
+  <div id="modal-workflow" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop ps-modal-lg">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Automation</div><div class="ps-drawer-title">Workflow Builder</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form" style="padding:16px">
+        <div class="ps-field">
+          <label class="ps-flabel" for="wf-name">Workflow name</label>
+          <input class="ps-in" id="wf-name" placeholder="My automation">
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel">Steps <span class="ps-flabel-hint">(click + to add)</span></label>
+          <div id="wf-steps" class="ps-groups-list"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <select class="ps-in" id="wf-activity-select" style="flex:1;min-width:200px">
+              <option value="">Choose activity…</option>
+            </select>
+            <button type="button" class="ps-btn ghost sm" id="wf-add-step">+ Add step</button>
+          </div>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="wf-json">JSON preview</label>
+          <textarea class="ps-in ps-mono" id="wf-json" rows="6" readonly></textarea>
+        </div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" id="wf-export-btn">⬇ Export JSON</button>
+          <button type="button" class="ps-btn primary" id="wf-save-btn">💾 Save workflow</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Proxies modal ================= -->
+  <div id="modal-proxies" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop ps-modal-lg">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Network</div><div class="ps-drawer-title">Proxy manager</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <div class="ps-tabs" id="proxy-tabs">
+          <button class="ps-tab active" data-tab="list">Proxy list</button>
+          <button class="ps-tab" data-tab="add">Add proxy</button>
+          <button class="ps-tab" data-tab="bulk">Bulk import</button>
+        </div>
+        <div class="ps-tabpane active" data-pane="list">
+          <div class="ps-modal-foot" style="margin-bottom:8px">
+            <button class="ps-btn ghost sm" id="btn-fetch-free">🎲 Fetch free proxies (testing)</button>
+          </div>
+          <div id="pool-health-line" style="font-size:13px;color:var(--dim,#94a3b8);margin-bottom:8px"></div>
+          <div id="proxies-list" class="ps-groups-list"></div>
+        </div>
+        <div class="ps-tabpane" data-pane="add">
+          <form id="form-proxy-new" class="ps-form">
+            <div class="ps-grid2">
+              <div class="ps-field">
+                <label class="ps-flabel" for="px-name">Name</label>
+                <input class="ps-in" id="px-name" type="text" placeholder="e.g. us-residential-1" required maxlength="64">
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="px-type">Type</label>
+                <select class="ps-in" id="px-type">
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
+                  <option value="socks5">SOCKS5</option>
+                  <option value="socks4">SOCKS4</option>
+                </select>
+              </div>
+            </div>
+            <div class="ps-grid2">
+              <div class="ps-field">
+                <label class="ps-flabel" for="px-host">Host</label>
+                <input class="ps-in" id="px-host" type="text" placeholder="192.168.1.1 or proxy.example.com" required>
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="px-port">Port</label>
+                <input class="ps-in" id="px-port" type="number" placeholder="8080" required min="1" max="65535">
+              </div>
+            </div>
+            <div class="ps-grid2">
+              <div class="ps-field">
+                <label class="ps-flabel" for="px-user">Username <span class="ps-flabel-hint">(optional)</span></label>
+                <input class="ps-in" id="px-user" type="text" autocomplete="off">
+              </div>
+              <div class="ps-field">
+                <label class="ps-flabel" for="px-pass">Password <span class="ps-flabel-hint">(optional)</span></label>
+                <input class="ps-in" id="px-pass" type="password" autocomplete="new-password">
+              </div>
+            </div>
+            <div class="ps-modal-foot">
+              <button type="submit" class="ps-btn primary">Add proxy</button>
+            </div>
+          </form>
+        </div>
+        <div class="ps-tabpane" data-pane="bulk">
+          <form id="form-proxy-bulk" class="ps-form">
+            <div class="ps-field">
+              <label class="ps-flabel" for="px-bulk-text">Proxy list <span class="ps-flabel-hint">(one per line: host:port or host:port:user:pass)</span></label>
+              <textarea class="ps-in" id="px-bulk-text" rows="6" placeholder="192.168.1.1:8080&#10;proxy.example.com:1080:user:pass&#10;socks5://10.0.0.1:1080"></textarea>
+            </div>
+            <div class="ps-field">
+              <label class="ps-flabel" for="px-bulk-type">Default type</label>
+              <select class="ps-in" id="px-bulk-type">
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="socks5">SOCKS5</option>
+              </select>
+            </div>
+            <div id="px-bulk-result" class="ps-bulk-result" hidden></div>
+            <div class="ps-modal-foot">
+              <button type="submit" class="ps-btn primary">Import</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Bulk edit modal ================= -->
+  <div id="modal-bulk-edit" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Bulk action</div><div class="ps-drawer-title">Edit profiles</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-bulk-edit" class="ps-form">
+        <p class="ps-hint" id="bulk-edit-count">0 profiles selected</p>
+        <div class="ps-field">
+          <label class="ps-flabel" for="bulk-group">Group</label>
+          <select class="ps-in" id="bulk-group"></select>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="bulk-proxy">Proxy</label>
+          <select class="ps-in" id="bulk-proxy"></select>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="bulk-tag">Client tag <span class="ps-flabel-hint">(leave empty to keep)</span></label>
+          <input class="ps-in" id="bulk-tag" type="text" placeholder="Keep unchanged">
+        </div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Cancel</button>
+          <button type="submit" class="ps-btn primary">Apply to selected</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= Groups modal ================= -->
+  <div id="modal-groups" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Organize</div><div class="ps-drawer-title">Profile groups</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <div id="groups-list" class="ps-groups-list"></div>
+        <form id="form-group-new" class="ps-form" style="margin-top:12px">
+          <div class="ps-field">
+            <label class="ps-flabel" for="group-name">New group name</label>
+            <input class="ps-in" id="group-name" type="text" placeholder="e.g. Clients" required maxlength="64">
+          </div>
+          <div class="ps-field">
+            <label class="ps-flabel" for="group-remark">Remark (optional)</label>
+            <input class="ps-in" id="group-remark" type="text" placeholder="Optional note" maxlength="200">
+          </div>
+          <div class="ps-modal-foot">
+            <button type="submit" class="ps-btn primary">Create group</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Cookies modal ================= -->
+  <div id="modal-cookies" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Session</div><div class="ps-drawer-title" id="ck-title">Cookies</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <div class="ps-field">
+          <label class="ps-flabel" for="ck-fmt">Export format</label>
+          <select class="ps-in" id="ck-fmt">
+            <option value="cookie-editor">Cookie-Editor JSON</option>
+            <option value="playwright">Playwright storage-state</option>
+            <option value="netscape">Netscape cookies.txt</option>
+          </select>
+        </div>
+        <div class="ps-field">
+          <button type="button" class="ps-btn ghost" id="btn-ck-export">&#8681; Export cookies</button>
+        </div>
+        <div class="ps-field">
+          <label class="ps-flabel" for="ck-file">Import cookie file <span class="ps-flabel-hint">(format auto-detected)</span></label>
+          <input class="ps-in" id="ck-file" type="file" accept=".json,.txt">
+        </div>
+        <label class="ps-check">
+          <input type="checkbox" id="ck-clear">
+          <span class="ps-check-name">Clear existing cookies before import</span>
+        </label>
+        <div class="ps-field">
+          <button type="button" class="ps-btn ghost" id="btn-ck-import">&#8679; Import cookies</button>
+        </div>
+        <div id="ck-result" class="ps-bulk-result" hidden></div>
+        <div class="ps-modal-foot">
+          <button type="button" class="ps-btn ghost" data-close>Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Health modal ================= -->
+  <div id="modal-health" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-modal-wide ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Profile health</div><div class="ps-drawer-title" id="health-title">Health</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div id="health-body" class="ps-health-body"><div class="ps-empty">Loading health&hellip;</div></div>
+      <div class="ps-modal-foot">
+        <button type="button" class="ps-btn ghost" data-close>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Warm-up modal ================= -->
+  <div id="modal-warmup" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Warm up profile</div><div class="ps-drawer-title" id="warmup-title">Warm up</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-warmup">
+        <div class="ps-field">
+          <label for="warmup-scenario">Scenario</label>
+          <select id="warmup-scenario" name="scenario"></select>
+        </div>
+        <div id="warmup-status" class="ps-empty"></div>
+        <div class="ps-modal-foot">
+          <button type="submit" class="ps-btn primary">Start warm-up</button>
+          <button type="button" class="ps-btn ghost" data-close>Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= RPA modal (Phase 7) ================= -->
+
+  <!-- ================= Trash modal ================= -->
+  <div id="modal-trash" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop ps-modal-lg">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Profiles</div><div class="ps-drawer-title">Trash</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <div class="ps-form">
+        <div class="ps-modal-foot" style="margin-bottom:8px">
+          <button class="ps-btn ghost sm" id="btn-trash-purge-old">Purge older than 30 days</button>
+        </div>
+        <div id="trash-list" class="ps-groups-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Preferences modal ================= -->
+  <div id="modal-prefs" class="ps-overlay center" hidden>
+    <div class="ps-modal ps-pop">
+      <div class="ps-drawer-h">
+        <div><div class="ps-eyebrow">Global</div><div class="ps-drawer-title">Preferences</div></div>
+        <button class="ps-x" data-close aria-label="Close">&#10005;</button>
+      </div>
+      <form id="form-prefs">
+        <div class="ps-field">
+          <label for="pref-engine">Default engine</label>
+          <select id="pref-engine">
+            <option value="camoufox">Camoufox (Firefox)</option>
+            <option value="patchright">Patchright (Chromium)</option>
+          </select>
+        </div>
+        <div class="ps-field">
+          <label for="pref-os">Default OS</label>
+          <select id="pref-os">
+            <option value="windows">Windows</option>
+            <option value="macos">macOS</option>
+            <option value="linux">Linux</option>
+          </select>
+        </div>
+        <div class="ps-field">
+          <label for="pref-tz-mode">Default timezone mode</label>
+          <select id="pref-tz-mode">
+            <option value="ip">Based on IP</option>
+            <option value="real">Real</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="ps-field">
+          <label for="pref-lang-mode">Default language mode</label>
+          <select id="pref-lang-mode">
+            <option value="ip">Based on IP</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="ps-field">
+          <label for="pref-startup-urls">Default startup URLs (one per line)</label>
+          <textarea id="pref-startup-urls" rows="3" placeholder="https://google.com"></textarea>
+        </div>
+        <div class="ps-modal-foot">
+          <button type="submit" class="ps-btn primary">Save</button>
+          <button type="button" class="ps-btn ghost" data-close>Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toasts" class="ps-toasts" aria-live="polite"></div>
+
+  <script src="app.js?v=oss1" defer></script>
+</body>
+</html>

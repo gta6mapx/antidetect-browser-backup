@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><title>Network Diagnostic</title>
+<style>
+body { font-family: sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+.test { margin: 10px 0; padding: 10px; border-radius: 5px; }
+.pass { background: #1a5c1a; }
+.fail { background: #5c1a1a; }
+.info { background: #1a3a5c; }
+</style>
+</head>
+<body>
+<h1>🔍 Network Diagnostic</h1>
+<div id="results"></div>
+<script>
+async function test(name, url) {
+  const div = document.createElement('div');
+  div.className = 'test info';
+  div.textContent = `Testing ${name}...`;
+  document.getElementById('results').appendChild(div);
+  try {
+    const start = Date.now();
+    const resp = await fetch(url, {mode: 'no-cors'});
+    const ms = Date.now() - start;
+    div.className = 'test pass';
+    div.textContent = `✅ ${name}: OK (${ms}ms)`;
+  } catch(e) {
+    div.className = 'test fail';
+    div.textContent = `❌ ${name}: FAILED - ${e.message}`;
+  }
+}
+async function run() {
+  // Show current URL and user agent.
+  const info = document.createElement('div');
+  info.className = 'test info';
+  info.innerHTML = `<b>URL:</b> ${location.href}<br><b>UA:</b> ${navigator.userAgent.slice(0,80)}...`;
+  document.getElementById('results').appendChild(info);
+
+  await test('Google DNS (8.8.8.8)', 'https://8.8.8.8/');
+  await test('DuckDuckGo', 'https://duckduckgo.com/');
+  await test('Google', 'https://www.google.com/');
+  await test('Example', 'https://example.com/');
+}
+run();
+</script>
+</body>
+</html>

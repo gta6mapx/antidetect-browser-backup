@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AntiDetect — Sign in</title>
+  <script>
+    /* apply saved theme before paint (dark default) */
+    try {
+      var t = localStorage.getItem("ad_theme");
+      if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+    } catch (e) {}
+  </script>
+  <style>
+    :root {
+      --bg: #0B0B10; --bg2: #101017; --surface: #15151F;
+      --line: #282840; --text: #ECEDF5; --muted: #989BB6; --dim: #5B5E7A;
+      --accent: #8B7CFF; --accent-2: #6D5CE8; --red: #FF6B7A;
+    }
+    html[data-theme="light"] {
+      --bg: #ffffff; --bg2: #f5f7fa; --surface: #ffffff;
+      --line: #dfe3ea; --text: #1a1c22; --muted: #5f6368; --dim: #8a8f98;
+      --accent: #1a73e8; --accent-2: #1669c7; --red: #d93025;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: var(--bg); color: var(--text);
+      font-family: "Inter", ui-sans-serif, system-ui, sans-serif; font-size: 14px;
+    }
+    .card {
+      width: 380px; max-width: 92vw; background: var(--bg2);
+      border: 1px solid var(--line); border-radius: 16px; padding: 34px 32px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .logo {
+      width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px;
+    }
+    .brand-name { font-weight: 700; font-size: 17px; }
+    .brand-sub { font-size: 10px; color: var(--dim); letter-spacing: 3px; text-transform: uppercase; margin-top: 1px; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    p.sub { color: var(--muted); font-size: 12.5px; margin: 0 0 20px; }
+    label { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+    input {
+      width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+      padding: 11px 13px; color: var(--text); font-size: 14px; outline: none; margin-bottom: 14px;
+      font-family: inherit;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,124,255,.18); }
+    html[data-theme="light"] input:focus { box-shadow: 0 0 0 3px rgba(26,115,232,.18); }
+    button {
+      width: 100%; border: none; border-radius: 10px; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; font-size: 14px; font-weight: 600; padding: 12px; font-family: inherit;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .err {
+      display: none; background: rgba(255,107,122,.1); border: 1px solid var(--red);
+      color: var(--red); border-radius: 9px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 14px;
+    }
+    .foot { margin-top: 18px; text-align: center; font-size: 11px; color: var(--dim); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo">&#9670;</div>
+      <div><div class="brand-name">AntiDetect</div><div class="brand-sub">Profile Manager</div></div>
+    </div>
+    <h1>Sign in</h1>
+    <p class="sub">Local dashboard — your session stays on this machine.</p>
+    <div class="err" id="err"></div>
+    <form id="form">
+      <label for="username">Username</label>
+      <input id="username" type="text" autocomplete="username" autofocus placeholder="admin">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
+      <button type="submit" id="btn">Sign in</button>
+    </form>
+    <div class="foot">Runs on 127.0.0.1 only</div>
+  </div>
+  <script>
+    "use strict";
+    var form = document.getElementById("form"), err = document.getElementById("err"),
+        btn = document.getElementById("btn");
+    function showErr(m) { err.textContent = m; err.style.display = "block"; }
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      err.style.display = "none"; btn.disabled = true;
+      try {
+        var res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+          })
+        });
+        var data = null;
+        try { data = await res.json(); } catch (x) {}
+        if (!res.ok) { showErr((data && data.error) || "Sign in failed"); btn.disabled = false; return; }
+        window.location.href = "/";
+      } catch (x) { showErr("Backend unreachable."); btn.disabled = false; }
+    });
+  </script>
+</body>
+</html>

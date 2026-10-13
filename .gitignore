@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.db
+*.db-journal
+/data/
+.camoufox/
+/tools/restic-bin/
+venv/
+.env
+.DS_Store
+.venv/
+vendor/patchright/driver/node
+.github-token
