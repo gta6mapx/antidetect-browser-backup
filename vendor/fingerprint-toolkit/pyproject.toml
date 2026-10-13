@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fingerprint-toolkit"
+version = "1.0.0"
+description = "Browser fingerprint randomization toolkit - Canvas, WebGL, Audio, Navigator & more"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "xuweizhengo"}
+]
+keywords = ["fingerprint", "anti-detect", "selenium", "playwright", "browser", "automation", "privacy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/xuweizhengo/fingerprint-toolkit"
+Repository = "https://github.com/xuweizhengo/fingerprint-toolkit"
+
+[project.scripts]
+fingerprint-toolkit = "fingerprint_toolkit.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fingerprint_toolkit*"]
