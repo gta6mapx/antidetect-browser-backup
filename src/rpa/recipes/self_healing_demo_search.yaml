@@ -1,0 +1,58 @@
+# Self-healing demo recipe: search flow.
+#
+# Same mechanics as self_healing_demo_login.yaml, on a search page instead:
+# primary selectors fail over to fallbacks in order; total failure captures
+# a snapshot (URL + HTML excerpt + screenshot + attempted selectors) and the
+# sandbox repair probes read-only candidates (text / ARIA role / attribute
+# variations / XPath translation).
+meta:
+  name: self_healing_demo_search
+  version: 1
+  description: Demo search flow showing fallback ordering + failure snapshots.
+
+steps:
+  - id: open_home
+    action: goto
+    url: https://example.com/
+
+  - id: fill_query
+    action: fill
+    label: Search box
+    value: antidetect browser
+    primary: "#search-input"
+    fallbacks:
+      - "[name='q']"
+      - "input[type='search']"
+      - {role: "searchbox"}
+    repair:
+      text_hint: "Search"
+      role: searchbox
+
+  - id: submit_search
+    action: click
+    label: Search button
+    primary: "#search-button"
+    fallbacks:
+      - "[aria-label='Search']"
+      - {role: "button", name: "Search"}
+    repair:
+      role: button
+      name: Search
+
+  - id: wait_results
+    action: wait_for
+    label: Results list
+    primary: ".search-results"
+    fallbacks:
+      - "[role='list']"
+      - "//ul[contains(@class, 'results')]"
+    timeout_ms: 8000
+
+  - id: read_first_result
+    action: get_text
+    label: First result title
+    primary: ".search-results li:first-child h3"
+    fallbacks:
+      - "[role='list'] li:first-child"
+    repair:
+      text_hint: "result"

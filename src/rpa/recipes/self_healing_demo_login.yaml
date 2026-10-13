@@ -1,0 +1,70 @@
+# Self-healing demo recipe: login flow.
+#
+# Run with an injected Playwright page (our Camoufox profile page):
+#
+#     from src.rpa.self_healing import SelfHealingRunner
+#     runner = SelfHealingRunner.from_yaml("src/rpa/recipes/self_healing_demo_login.yaml", page)
+#     summary = runner.run()
+#
+# If the site renames #username -> [name="username"], the primary misses and
+# the first fallback takes over automatically. If ALL selectors miss, a
+# failure snapshot is captured and the sandbox repair step re-queries by
+# visible text ("Username") with read-only DOM probes — no clicks or fills.
+meta:
+  name: self_healing_demo_login
+  version: 1
+  description: Demo login flow showing fallback selectors + sandbox repair.
+
+steps:
+  - id: open_login
+    action: goto
+    url: https://example.com/login
+
+  - id: fill_username
+    action: fill
+    label: Username field
+    value: demo-user
+    primary: "#username"
+    fallbacks:
+      - "[name='username']"
+      - "//input[@id='username']"
+      - {role: "textbox", name: "Username"}
+    repair:
+      text_hint: "Username"
+      role: textbox
+      name: Username
+
+  - id: fill_password
+    action: fill
+    label: Password field
+    value: s3cret
+    primary: "#password"
+    fallbacks:
+      - "[name='password']"
+      - "[type='password']"
+      - {role: "textbox", name: "Password"}
+    repair:
+      role: textbox
+      name: Password
+
+  - id: click_signin
+    action: click
+    label: Sign-in button
+    primary: "button[type=submit]"
+    fallbacks:
+      - "input[type=submit]"
+      - "//button[contains(., 'Sign in')]"
+      - {role: "button", name: "Sign in"}
+    repair:
+      text_hint: "Sign in"
+      role: button
+      name: Sign in
+
+  - id: wait_dashboard
+    action: wait_for
+    label: Dashboard marker
+    primary: "#dashboard"
+    fallbacks:
+      - "[data-testid='dashboard']"
+      - "//main"
+    timeout_ms: 10000
