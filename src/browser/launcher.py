@@ -393,7 +393,11 @@ def build_launch_kwargs(persona: dict, headless: bool = False) -> dict:
         # WORKAROUND: Since address bar search is broken in Camoufox binary,
         # set homepage to Google so users can search from there.
         "browser.startup.homepage": "https://www.google.com",
-        "browser.startup.page": 1,  # 1 = show homepage on startup
+        # 3 = restore previous session in ONE window. (Was 1 = homepage,
+        # which made Firefox open BOTH the homepage window AND the
+        # restored-session window = 2 windows per launch.) With 3, a
+        # fresh profile (no session) still opens the homepage above.
+        "browser.startup.page": 3,
     }
     return kwargs
 
