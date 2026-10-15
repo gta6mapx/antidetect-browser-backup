@@ -169,7 +169,16 @@ def mount_api(app, profile_manager_getter, *,
         profile_status=profile_status,
         profile_view=profile_view,
     ))
-    app.include_router(v1.router)
+    # NOTE: FastAPI >= 0.142 changed include_router() to a lazy
+    # _IncludedRouter that does not resolve routes (all /api/v1/* 404).
+    # Register the routes directly, BEFORE the "/" static Mount —
+    # Starlette matches in order and the Mount would swallow /api/v1/*.
+    from starlette.routing import Mount
+    mount_idx = next(
+        (i for i, r in enumerate(app.router.routes)
+         if isinstance(r, Mount)), len(app.router.routes))
+    for j, route in enumerate(v1.router.routes):
+        app.router.routes.insert(mount_idx + j, route)
     # Added LAST so it runs FIRST (Starlette middleware ordering) — the
     # Bearer check must precede the session middleware's 401/302.
     app.add_middleware(BaseHTTPMiddleware, dispatch=_bearer_bypass_middleware)
