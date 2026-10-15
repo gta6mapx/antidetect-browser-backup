@@ -13,7 +13,10 @@ pyyaml
 requests
 PySocks  # BSD — SOCKS4/5 proxy support (proxy health checks)
 maxminddb  # Apache-2.0 — enables camoufox[geoip] (proxy exit-IP geolocation)
-python_ghost_cursor  # MIT — humanized mouse (ghost-cursor port) for behavior engine
+# python_ghost_cursor (MIT) is OPTIONAL — install manually if wanted:
+#   pip install python_ghost_cursor
+# Its dependency `bezier` has no Python 3.14 wheels (build fails on Windows).
+# The behavior engine falls back to the built-in bezier mouse automatically.
 tlsmask==1.16.0  # MIT — browser-TLS impersonation for src/fingerprint/wire_checks.py; wraps bogdanfinn/tls-client (BSD-4-Clause)
 httpx
 rich
