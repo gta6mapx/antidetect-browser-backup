@@ -187,3 +187,34 @@ def test_bulk_check_invalid_lines():
         assert out[1]["ok"] is False  # blank line
         # 127.0.0.1:1 -> refused; real check attempted, structured result
         assert out[2]["host"] == "127.0.0.1" and "latency_ms" in out[2]
+
+
+def test_list_profiles_endpoint_shape(home):
+    """Regression: coordinator's nested _profile_view shadowed the module one.
+
+    /api/profiles must serialize persona dicts via the module-level
+    _profile_view(persona), not pass dicts as names into manager.get().
+    """
+    import importlib
+    import src.gui.server as srv
+    importlib.reload(srv)
+    app = srv.create_app()
+    fn = None
+    for r in app.routes:
+        if getattr(r, "path", "") == "/api/profiles":
+            fn = r.endpoint
+            break
+    assert fn is not None
+    # Create one profile, then call the endpoint (bypass auth).
+    mgr = srv._profile_manager
+    mgr.create("regression-view-test", os="windows")
+    try:
+        data = fn()
+        assert data["total"] >= 1
+        views = data["profiles"]
+        assert views, "expected at least one profile view"
+        v = views[0]
+        assert v["name"] == "regression-view-test"
+        assert "proxy_label" in v and "status" in v
+    finally:
+        mgr.delete("regression-view-test", permanent=True)

@@ -2438,7 +2438,7 @@ def create_app() -> FastAPI:
                 raise KeyError(name)
             raise ValueError(exc.detail)
 
-    def _profile_view(name):
+    def _v1_profile_view(name):
         try:
             return _profile_manager.get(name)
         except KeyError:
@@ -2447,7 +2447,7 @@ def create_app() -> FastAPI:
     from src.api import mount_api
     mount_api(app, lambda: _profile_manager,
               launch_profile=_v1_launch, stop_profile=_v1_stop,
-              profile_status=_v1_status, profile_view=_profile_view)
+              profile_status=_v1_status, profile_view=_v1_profile_view)
 
     return app
 
