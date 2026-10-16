@@ -288,6 +288,33 @@ def _maxminddb_available() -> bool:
         return False
 
 
+def _detect_from_real_ip() -> tuple:
+    """Detect (locale, timezone_id) from the real (no-proxy) IP via GeoIP.
+
+    Used for "Based on IP" mode when no proxy is attached. Returns
+    (None, None) on any failure — the caller then falls back to leaving
+    the values unset (Camoufox geoip) or the old saved-value behavior.
+    Explicit values are returned (not left to Camoufox) so stale locale
+    prefs saved in the profile from earlier launches can't survive.
+    """
+    try:
+        from camoufox.ip import public_ip
+        from camoufox.geolocation import get_geolocation
+        ip = public_ip()  # no proxy -> real IP
+        geo = get_geolocation(ip)
+        loc = geo.locale
+        locale = None
+        if loc and loc.language and loc.region:
+            locale = "%s-%s" % (loc.language, loc.region)
+        tz = geo.timezone or None
+        print("[LAUNCH] real-IP geoip: ip=%s locale=%s tz=%s"
+              % (ip, locale, tz))
+        return locale, tz
+    except Exception as exc:
+        print("[LAUNCH] real-IP geoip detection failed (%s)" % exc)
+        return None, None
+
+
 def build_launch_kwargs(persona: dict, headless: bool = False) -> dict:
     """Build the keyword arguments for ``Camoufox(**kwargs)`` from a persona.
 
@@ -320,38 +347,45 @@ def build_launch_kwargs(persona: dict, headless: bool = False) -> dict:
 
     locale = persona.get("locale")
     language_mode = (persona.get("language_mode") or "ip").lower()
+    timezone_mode = (persona.get("timezone_mode") or "ip").lower()
     proxy = persona.get("proxy")
     # geoip derives locale/timezone from the exit IP — via proxy when set,
     # else from the real IP. Only when maxminddb is installed (else the
     # launch would crash).
     geoip_possible = _maxminddb_available()
     geoip_active = bool(proxy) and geoip_possible
+    # "Based on IP" with no proxy: detect once from the REAL IP so stale
+    # saved values can't survive (they caused IP/locale mismatches).
+    real_locale = real_tz = None
+    if not proxy and geoip_possible and (
+            language_mode == "ip" or timezone_mode == "ip"):
+        real_locale, real_tz = _detect_from_real_ip()
     if language_mode == "custom" and locale:
         kwargs["locale"] = locale
+    elif language_mode == "ip" and real_locale:
+        kwargs["locale"] = real_locale
     elif language_mode == "ip" and geoip_possible:
-        # "Based on IP": leave locale unset so Camoufox derives it from
-        # the exit IP (proxy or real). Do NOT fall back to a stale saved
-        # locale — that caused IP/locale mismatches (e.g. PK IP + de-CH).
+        # Proxy geoip, or real-IP detection failed -> leave unset so
+        # Camoufox derives it from the exit IP.
         pass
     elif not geoip_active:
         # No geoip possible: keep old behavior (saved locale or en-US
         # default; bare Camoufox without a locale picks German).
         kwargs["locale"] = locale or "en-US"
-    # else: "ip" mode + proxy geoip -> leave locale unset (handled above).
 
     timezone = persona.get("timezone")
-    timezone_mode = (persona.get("timezone_mode") or "ip").lower()
     if timezone_mode == "custom" and timezone:
         kwargs["timezone_id"] = timezone
     elif timezone_mode == "real":
         pass  # don't spoof: leave unset -> real system timezone
+    elif timezone_mode == "ip" and real_tz:
+        kwargs["timezone_id"] = real_tz
     elif timezone_mode == "ip" and geoip_possible:
-        # "Based on IP": leave unset so Camoufox derives it from the
-        # exit IP (proxy or real). Stale saved values caused mismatches.
+        # Proxy geoip, or real-IP detection failed -> leave unset,
+        # Camoufox derives it.
         pass
     elif not geoip_active and timezone:
         kwargs["timezone_id"] = timezone
-    # else: "ip" mode + proxy geoip -> leave unset, Camoufox derives it
 
     geo = persona.get("geolocation")
     if geo:
