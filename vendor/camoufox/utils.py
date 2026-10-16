@@ -1333,26 +1333,36 @@ def launch_options(
 
         if geoip is True:
             # Find the user's IP address
-            if proxy:
-                geoip = public_ip(Proxy(**proxy).as_string())
-            else:
-                geoip = public_ip()
+            try:
+                if proxy:
+                    geoip = public_ip(Proxy(**proxy).as_string())
+                else:
+                    geoip = public_ip()
+            except Exception as exc:
+                # Non-fatal: the proxy may be down or blocking IP-API
+                # requests. Launch the browser anyway without geoip
+                # spoofing rather than killing the entire launch.
+                # (Antidetect patch: upstream raises InvalidIP here.)
+                print("[CAMOUFOX] geoip IP lookup failed (%s); "
+                      "continuing without geoip spoofing" % exc)
+                geoip = False
 
-        # Spoof WebRTC if not blocked
-        if not block_webrtc:
-            if valid_ipv4(geoip):
-                set_into(config, 'webrtc:ipv4', geoip)
-                firefox_user_prefs['network.dns.disableIPv6'] = True
-            elif valid_ipv6(geoip):
-                set_into(config, 'webrtc:ipv6', geoip)
+        if geoip:
+            # Spoof WebRTC if not blocked
+            if not block_webrtc:
+                if valid_ipv4(geoip):
+                    set_into(config, 'webrtc:ipv4', geoip)
+                    firefox_user_prefs['network.dns.disableIPv6'] = True
+                elif valid_ipv6(geoip):
+                    set_into(config, 'webrtc:ipv6', geoip)
 
-        geolocation = get_geolocation(geoip, geoip_db=geoip_db)
-        geo_config = geolocation.as_config()
-        for key, value in geo_config.items():
-            if key in ('timezone', 'locale:language', 'locale:region', 'locale:script'):
-                config.setdefault(key, value)
-            else:
-                config[key] = value
+            geolocation = get_geolocation(geoip, geoip_db=geoip_db)
+            geo_config = geolocation.as_config()
+            for key, value in geo_config.items():
+                if key in ('timezone', 'locale:language', 'locale:region', 'locale:script'):
+                    config.setdefault(key, value)
+                else:
+                    config[key] = value
 
     # A page that receives a position without a prompt must also see
     # permissions.query({name: 'geolocation'}) report "granted" -- that is
