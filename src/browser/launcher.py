@@ -321,18 +321,23 @@ def build_launch_kwargs(persona: dict, headless: bool = False) -> dict:
     locale = persona.get("locale")
     language_mode = (persona.get("language_mode") or "ip").lower()
     proxy = persona.get("proxy")
-    # geoip derives locale/timezone from the proxy exit IP — only when a
-    # proxy is set AND maxminddb is installed (else the launch would crash).
-    geoip_active = bool(proxy) and _maxminddb_available()
+    # geoip derives locale/timezone from the exit IP — via proxy when set,
+    # else from the real IP. Only when maxminddb is installed (else the
+    # launch would crash).
+    geoip_possible = _maxminddb_available()
+    geoip_active = bool(proxy) and geoip_possible
     if language_mode == "custom" and locale:
         kwargs["locale"] = locale
+    elif language_mode == "ip" and geoip_possible:
+        # "Based on IP": leave locale unset so Camoufox derives it from
+        # the exit IP (proxy or real). Do NOT fall back to a stale saved
+        # locale — that caused IP/locale mismatches (e.g. PK IP + de-CH).
+        pass
     elif not geoip_active:
-        # No proxy/geoip: keep old behavior (saved locale or en-US default;
-        # bare Camoufox without a locale picks German, which confuses users).
+        # No geoip possible: keep old behavior (saved locale or en-US
+        # default; bare Camoufox without a locale picks German).
         kwargs["locale"] = locale or "en-US"
-    # else: "ip" mode + geoip -> leave locale unset so Camoufox derives
-    # it from the proxy's exit IP (this was the reported bug: the saved
-    # locale overrode geoip, so language never followed the proxy).
+    # else: "ip" mode + proxy geoip -> leave locale unset (handled above).
 
     timezone = persona.get("timezone")
     timezone_mode = (persona.get("timezone_mode") or "ip").lower()
@@ -340,9 +345,13 @@ def build_launch_kwargs(persona: dict, headless: bool = False) -> dict:
         kwargs["timezone_id"] = timezone
     elif timezone_mode == "real":
         pass  # don't spoof: leave unset -> real system timezone
+    elif timezone_mode == "ip" and geoip_possible:
+        # "Based on IP": leave unset so Camoufox derives it from the
+        # exit IP (proxy or real). Stale saved values caused mismatches.
+        pass
     elif not geoip_active and timezone:
         kwargs["timezone_id"] = timezone
-    # else: "ip" mode + geoip -> leave unset, Camoufox derives it
+    # else: "ip" mode + proxy geoip -> leave unset, Camoufox derives it
 
     geo = persona.get("geolocation")
     if geo:
@@ -362,6 +371,11 @@ def build_launch_kwargs(persona: dict, headless: bool = False) -> dict:
         else:
             print("[LAUNCH] maxminddb missing — launching without geoip "
                   "(run: pip install -r requirements.txt)")
+    elif (language_mode, timezone_mode).count("ip") and _maxminddb_available():
+        # "Based on IP" with no proxy: derive locale/timezone from the
+        # REAL IP via Camoufox geoip (public_ip lookup is non-fatal since
+        # the vendored patch — launch continues if it fails).
+        kwargs["geoip"] = True
     # else: neither proxy nor geolocation -> leave geoip unset entirely
 
     kwargs.update(_build_proxy_kwargs(proxy))
